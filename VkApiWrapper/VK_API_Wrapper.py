@@ -3,6 +3,7 @@ import urllib
 import cookielib
 from HTMLParser import HTMLParser
 from urlparse import urlparse
+import json
 
 class VkAuthResponceParser(HTMLParser):
 	def __init__(self):
@@ -95,20 +96,36 @@ class VK:
 			urllib2.HTTPRedirectHandler())
 		doc, url = auth_user(email, password, opener)
 		if urlparse(url).path != "/blank.html":
-			# Need to give access to requested scope
 			url = give_access(doc, opener)
 		if urlparse(url).path != "/blank.html":
 			raise RuntimeError("Expected success here")
 		answer = dict(split_key_value(kv_pair) for kv_pair in urlparse(url).fragment.split("&"))
 		if "access_token" not in answer or "user_id" not in answer:
 			raise RuntimeError("Missing some values in answer")
-		print(answer)
-		return answer["access_token"], answer["user_id"] 
+		self.access_token = answer["access_token"];
+		self.user_id = answer["user_id"]
+
+	def call_api(self, method, params):
+		if isinstance(params, list):
+			params_list = [kv for kv in params]
+		elif isinstance(params, dict):
+			params_list = params.items()
+		else:
+			params_list = [params]
+		params_list.append(("access_token", self.access_token))
+		url = "https://api.vk.com/method/%s?%s" % (method, urllib.urlencode(params_list))
+		return json.loads(urllib2.urlopen(url).read())["response"]
 
 
 vk = VK()
-email = 'test@gmail.com'
-password = 'qwerty'
-access_token, user_id = vk.auth(email, password)
-print(access_token)
-print(user_id)
+email = 'enter your email'
+password = 'enter your pass'
+try:
+	vk.auth(email, password)
+	audios = vk.call_api("audio.get", ("uid", vk.user_id))
+	for a in audios:
+		print(a['title'].encode('utf8'))
+		print(a['url'].encode('utf8'))
+except RuntimeError as r:
+	print("Error:%s"%r.args[0])
+
