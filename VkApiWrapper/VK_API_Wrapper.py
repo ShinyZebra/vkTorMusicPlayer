@@ -4,6 +4,10 @@ import cookielib
 from HTMLParser import HTMLParser
 from urlparse import urlparse
 import json
+from FileDownloader import download
+from os import path
+
+
 
 class VkAuthResponceParser(HTMLParser):
 	def __init__(self):
@@ -113,19 +117,20 @@ class VK:
 		else:
 			params_list = [params]
 		params_list.append(("access_token", self.access_token))
+		# params_list.append(("uid", self.user_id))
 		url = "https://api.vk.com/method/%s?%s" % (method, urllib.urlencode(params_list))
 		return json.loads(urllib2.urlopen(url).read())["response"]
 
 
 vk = VK()
-email = 'enter your email'
-password = 'enter your pass'
+email = ''
+password = ''
+destDir = ''
 try:
 	vk.auth(email, password)
 	audios = vk.call_api("audio.get", ("uid", vk.user_id))
 	for a in audios:
-		print(a['title'].encode('utf8'))
-		print(a['url'].encode('utf8'))
+		download(a['url'], 	path.join(destDir, a['title']))
 except RuntimeError as r:
 	print("Error:%s"%r.args[0])
 
